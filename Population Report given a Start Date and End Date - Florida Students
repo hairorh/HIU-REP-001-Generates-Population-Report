@@ -1,0 +1,100 @@
+# Population Report given a Start Date and End Date
+SELECT
+	# Convert Table in JSON
+	GROUP_CONCAT(
+		'{"program": "', acadProgCode, '","beginningPopulation": ', IFNULL(beginningPopulation,'0'), ',"populationAdditions": ', IFNULL(populationAdditions,'0'), ',"drops": ', IFNULL(drops,'0'), ',"graduates": ', IFNULL(graduates,'0'), '}' SEPARATOR ','
+		) as lineitems
+
+FROM
+	(# Build Table
+	SELECT a.acadProgCode, b.beginningPopulation, c.populationAdditions, d.drops, e.graduates
+
+		FROM
+		(			# Get All Academic Programs
+					SELECT acad_program.acadProgCode
+						FROM acad_program
+						WHERE 1
+		) AS a
+
+
+	LEFT JOIN
+		(			# Get Beginning Population
+					SELECT count(*) as beginningPopulation, stu_program.acadProgCode, address.state 
+						FROM stu_program
+						INNER JOIN address
+						ON stu_program.stuID = address.personID
+						WHERE stu_program.currStatus 
+						IN
+							('A','P', 'L') 
+						AND stu_program.startDate < '{{46850659__Start Date}}'
+						AND address.state LIKE 'FL'
+						OR (stu_program.stuID, stu_program.currStatus, stu_program.acadProgCode, address.state) 
+							IN (
+								SELECT stu_program.stuID, stu_program.currStatus, stu_program.acadProgCode, address.state 
+								FROM stu_program 
+								INNER JOIN address
+								ON stu_program.stuID = address.personID
+								WHERE stu_program.currStatus 
+								IN
+									('D', 'G')
+								AND stu_program.startDate < '{{46850659__Start Date}}' 
+								AND stu_program.endDate >= '{{46850659__Start Date}}'
+								AND address.state LIKE 'FL'
+								)
+						GROUP BY stu_program.acadProgCode
+		) AS b
+	ON a.acadProgCode = b.acadProgCode
+
+
+	LEFT JOIN
+		(			# Get Population Additions
+					SELECT count(*) as populationAdditions, stu_program.acadProgCode, address.state
+						FROM stu_program
+						INNER JOIN address
+						ON stu_program.stuID = address.personID 
+						WHERE stu_program.currStatus 
+						IN
+							('A','P', 'L', 'D', 'G') 
+						AND stu_program.startDate >= '{{46850659__Start Date}}' 
+						AND stu_program.startDate <= '{{46850659__End Date}}'
+						AND address.state LIKE 'FL'
+						GROUP by stu_program.acadProgCode
+
+		) AS c
+	ON a.acadProgCode = c.acadProgCode
+
+
+	LEFT JOIN
+		(			# Get Drops
+					SELECT count(*) as drops, stu_program.acadProgCode, address.state
+						FROM stu_program
+						INNER JOIN address
+						ON stu_program.stuID = address.personID
+						WHERE stu_program.currStatus 
+						IN ('D') 
+						AND stu_program.endDate >= '{{46850659__Start Date}}' 
+						AND stu_program.endDate <= '{{46850659__End Date}}'
+						AND address.state LIKE 'FL'
+						GROUP by stu_program.acadProgCode
+		) AS d
+	ON a.acadProgCode = d.acadProgCode
+
+
+	LEFT JOIN
+		(			# Get Graduates
+					SELECT count(*) as graduates, stu_program.acadProgCode, address.state
+					FROM stu_program
+					INNER JOIN address
+					ON stu_program.stuID = address.personID
+					WHERE stu_program.currStatus
+					IN ('G')
+					AND stu_program.endDate >= '{{46850659__Start Date}}'
+					AND stu_program.endDate <= '{{46850659__End Date}}'
+					AND address.state LIKE 'FL'
+					GROUP by stu_program.acadProgCode
+		) AS e
+	ON a.acadProgCode = e.acadProgCode
+
+
+	)
+z
